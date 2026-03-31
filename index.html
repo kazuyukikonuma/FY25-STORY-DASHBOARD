@@ -358,6 +358,22 @@ function drawPct(chart){
   ctx.restore();
 }
 
+function mkHBar(id,labels,data,colors,unit){
+  gc(id); var el=document.getElementById(id); if(!el) return;
+  charts[id]=new Chart(el,{type:'bar',data:{
+    labels:labels,
+    datasets:[{data:data,backgroundColor:colors,borderRadius:6,borderSkipped:false}]
+  },options:{
+    indexAxis:'y',
+    responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return ' '+ctx.parsed.x+unit+' ('+((ctx.parsed.x/data.reduce(function(a,b){return a+b;},0))*100).toFixed(1)+'%)';}}}},
+    scales:{
+      x:{ticks:{color:'#0f172a',font:{size:11,weight:'600'},callback:function(v){return v+unit;}},grid:{color:'#eef0f7'}},
+      y:{ticks:{color:'#0f172a',font:{size:12,weight:'700'}},grid:{display:false}}
+    }
+  }});
+}
+
 function mkLine(id,labels,datasets,unit){
   gc(id); var el=document.getElementById(id); if(!el) return;
   charts[id]=new Chart(el,{type:'line',data:{labels:labels,datasets:datasets},options:{
@@ -618,31 +634,55 @@ function render(){
   document.getElementById('app').innerHTML=html;
 
   // ===== Draw charts =====
-  // Cat bar
-  mkBar('c-cat-bar',pList,CATS.map(function(cat){
-    return {label:cn(cat),data:pList.map(function(pkey){return parseFloat((byCat[cat]?periodVal(byCat[cat],pkey)/10000:0).toFixed(1));}),backgroundColor:CCOLORS[cat]+'cc',borderRadius:3};
-  }),unit,true);
+  // Cat bar / annual view
+  if(period==='y'){
+    mkHBar('c-cat-bar',CATS.map(cn),
+      CATS.map(function(cat){return parseFloat((catTots[cat]/10000).toFixed(1));}),
+      CATS.map(function(c){return CCOLORS[c]+'cc';}),unit);
+  } else {
+    mkBar('c-cat-bar',pList,CATS.map(function(cat){
+      return {label:cn(cat),data:pList.map(function(pkey){return parseFloat((byCat[cat]?periodVal(byCat[cat],pkey)/10000:0).toFixed(1));}),backgroundColor:CCOLORS[cat]+'cc',borderRadius:3};
+    }),unit,true);
+  }
 
   // Cat donut
   mkDonut('c-cat-donut',CATS.map(cn),CATS.map(function(cat){return parseFloat((catTots[cat]/10000).toFixed(1));}),CATS.map(function(c){return CCOLORS[c];}));
 
-  // Grp bar
-  mkBar('c-grp-bar',pList,CH_GROUPS.map(function(g){
-    return {label:cg(g.key),data:pList.map(function(pkey){return parseFloat((byGrp[g.key]?periodVal(byGrp[g.key],pkey)/10000:0).toFixed(1));}),backgroundColor:g.color+'cc',borderRadius:3};
-  }),unit,true);
+  // Grp bar / annual view
+  if(period==='y'){
+    mkHBar('c-grp-bar',CH_GROUPS.map(function(g){return cg(g.key);}),
+      CH_GROUPS.map(function(g){return parseFloat((grpTots[g.key]/10000).toFixed(1));}),
+      CH_GROUPS.map(function(g){return g.color+'cc';}),unit);
+  } else {
+    mkBar('c-grp-bar',pList,CH_GROUPS.map(function(g){
+      return {label:cg(g.key),data:pList.map(function(pkey){return parseFloat((byGrp[g.key]?periodVal(byGrp[g.key],pkey)/10000:0).toFixed(1));}),backgroundColor:g.color+'cc',borderRadius:3};
+    }),unit,true);
+  }
 
   // Grp donut
   mkDonut('c-grp-donut',CH_GROUPS.map(function(g){return cg(g.key);}),CH_GROUPS.map(function(g){return parseFloat((grpTots[g.key]/10000).toFixed(1));}),CH_GROUPS.map(function(g){return g.color;}));
 
   // Time series: cat
-  mkBar('c-ts-cat',pList,CATS.map(function(cat){
-    return {label:cn(cat),data:pList.map(function(pkey){return parseFloat((byCat[cat]?periodVal(byCat[cat],pkey)/10000:0).toFixed(1));}),backgroundColor:CCOLORS[cat]+'cc',borderRadius:3};
-  }),unit,true);
+  if(period==='y'){
+    mkHBar('c-ts-cat',CATS.map(cn),
+      CATS.map(function(cat){return parseFloat((catTots[cat]/10000).toFixed(1));}),
+      CATS.map(function(c){return CCOLORS[c]+'cc';}),unit);
+  } else {
+    mkBar('c-ts-cat',pList,CATS.map(function(cat){
+      return {label:cn(cat),data:pList.map(function(pkey){return parseFloat((byCat[cat]?periodVal(byCat[cat],pkey)/10000:0).toFixed(1));}),backgroundColor:CCOLORS[cat]+'cc',borderRadius:3};
+    }),unit,true);
+  }
 
   // Time series: grp
-  mkBar('c-ts-grp',pList,CH_GROUPS.map(function(g){
-    return {label:cg(g.key),data:pList.map(function(pkey){return parseFloat((byGrp[g.key]?periodVal(byGrp[g.key],pkey)/10000:0).toFixed(1));}),backgroundColor:g.color+'cc',borderRadius:3};
-  }),unit,true);
+  if(period==='y'){
+    mkHBar('c-ts-grp',CH_GROUPS.map(function(g){return cg(g.key);}),
+      CH_GROUPS.map(function(g){return parseFloat((grpTots[g.key]/10000).toFixed(1));}),
+      CH_GROUPS.map(function(g){return g.color+'cc';}),unit);
+  } else {
+    mkBar('c-ts-grp',pList,CH_GROUPS.map(function(g){
+      return {label:cg(g.key),data:pList.map(function(pkey){return parseFloat((byGrp[g.key]?periodVal(byGrp[g.key],pkey)/10000:0).toFixed(1));}),backgroundColor:g.color+'cc',borderRadius:3};
+    }),unit,true);
+  }
 
   // Restore cross tags & chart
   renderCrossTags();
