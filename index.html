@@ -10,10 +10,10 @@
 :root{
   --bg:#f5f6fa;--sur:#fff;--bor:#dde1ec;--borl:#eef0f7;
   --txt:#0f172a;--sub:#475569;--dim:#94a3b8;
-  --al:#1e3a5f;--ap:#6b5c3e;--am:#38bdf8;--at:#dc2626;
-  --alb:#e8edf5;--apb:#f0ece4;--amb:#e0f5ff;--atb:#fef2f2;
-  --web:#ef4444;--tel:#eab308;--kol:#ec4899;--ec:#8b5cf6;--oth:#94a3b8;
-  --webb:#fef2f2;--telb:#fefce8;--kolb:#fdf2f8;--ecb:#f5f3ff;--othb:#f1f5f9;
+  --al:#7b9cc4;--ap:#c4a882;--am:#93d9f0;--at:#dc2626;
+  --alb:#edf3fb;--apb:#f7f0e6;--amb:#e4f6fd;--atb:#fef2f2;
+  --web:#f4a5a5;--tel:#f5e19a;--kol:#f5afd4;--ec:#c4b0f0;--oth:#c8cdd6;
+  --webb:#fdf2f2;--telb:#fefdf0;--kolb:#fdf1f8;--ecb:#f4f1fd;--othb:#f4f5f7;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'Noto Sans JP','Noto Sans TC',sans-serif;background:var(--bg);color:var(--txt);font-size:15px;}
@@ -178,16 +178,16 @@ var QUARTERS = [
   {key:'Q4',months:['1月','2月','3月']}
 ];
 var CATS = ['學習','周邊','Mirafeel'];
-var CCOLORS = {'學習':'#1e3a5f','周邊':'#6b5c3e','Mirafeel':'#38bdf8'};
+var CCOLORS = {'學習':'#7b9cc4','周邊':'#c4a882','Mirafeel':'#93d9f0'};
 var BDGCLS = {'學習':'bl','周邊':'bp','Mirafeel':'bm'};
 
 // 通路グループ定義
 var CH_GROUPS = [
-  {key:'WEB', channels:['官網'], color:'#ef4444', bg:'#fef2f2', cls:'web'},
-  {key:'TEL', channels:['電銷'], color:'#eab308', bg:'#fefce8', cls:'tel'},
-  {key:'KOL', channels:['團購'], color:'#ec4899', bg:'#fdf2f8', cls:'kol'},
-  {key:'EC',  channels:['蝦皮'], color:'#8b5cf6', bg:'#f5f3ff', cls:'ec'},
-  {key:'その他', channels:['經代銷','其他'], color:'#94a3b8', bg:'#f1f5f9', cls:'oth'}
+  {key:'WEB', channels:['官網'], color:'#f4a5a5', bg:'#fdf2f2', cls:'web'},
+  {key:'TEL', channels:['電銷'], color:'#f5e19a', bg:'#fefdf0', cls:'tel'},
+  {key:'KOL', channels:['團購'], color:'#f5afd4', bg:'#fdf1f8', cls:'kol'},
+  {key:'EC',  channels:['蝦皮'], color:'#c4b0f0', bg:'#f4f1fd', cls:'ec'},
+  {key:'その他', channels:['經代銷','其他'], color:'#c8cdd6', bg:'#f4f5f7', cls:'oth'}
 ];
 
 var XCOL = ['#0f172a','#0891b2','#d97706','#7c3aed','#dc2626','#059669','#be185d'];
@@ -579,8 +579,8 @@ function render(){
   var mat=crossAgg(rows);
   var maxV=0;
   CATS.forEach(function(cat){ CH_GROUPS.forEach(function(g){ if(mat[cat][g.key]>maxV) maxV=mat[cat][g.key]; }); });
-  function hbg(v){ if(!v||!maxV) return '#f8fafc'; var r=v/maxV; return r>0.7?'#1d4ed8':r>0.4?'#3b82f6':r>0.2?'#93c5fd':r>0.05?'#dbeafe':'#f0f9ff'; }
-  function hfg(v){ return (v&&maxV&&v/maxV>0.4)?'#fff':'var(--txt)'; }
+  function hbg(v){ if(!v||!maxV) return '#f8fafc'; var r=v/maxV; return r>0.7?'#7b9cc4':r>0.4?'#a8bfd8':r>0.2?'#c9daea':r>0.05?'#e4eef7':'#f4f8fc'; }
+  function hfg(v){ return (v&&maxV&&v/maxV>0.6)?'#fff':'var(--txt)'; }
 
   html+='<div class="cross-grid">';
 
