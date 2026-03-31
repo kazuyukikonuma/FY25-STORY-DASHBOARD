@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>FY25 銷售故事</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;600;700&family=DM+Mono:wght@400;500;600&display=swap');
+:root{
+  --bg:#f5f6fa;--sur:#fff;--bor:#dde1ec;--borl:#eef0f7;
+  --txt:#0f172a;--sub:#475569;--dim:#94a3b8;
+  --al:#2563eb;--ap:#059669;--am:#7c3aed;--at:#dc2626;
+  --alb:#eff6ff;--apb:#ecfdf5;--amb:#f5f3ff;--atb:#fef2f2;
+  --web:#0891b2;--tel:#d97706;--kol:#7c3aed;--ec:#059669;--oth:#94a3b8;
+  --webb:#e0f2fe;--telb:#fef3c7;--kolb:#f5f3ff;--ecb:#ecfdf5;--othb:#f1f5f9;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Noto Sans JP','Noto Sans TC',sans-serif;background:var(--bg);color:var(--txt);font-size:15px;}
+
+/* ===== Sticky Header ===== */
+.sticky-hd{position:sticky;top:0;z-index:100;background:var(--sur);border-bottom:2px solid var(--bor);padding:12px 28px;display:flex;align-items:center;justify-content:space-between;gap:16px;box-shadow:0 2px 8px rgba(0,0,0,.06);}
+.hd-left{display:flex;align-items:baseline;gap:14px;}
+.hd-title{font-size:1.1rem;font-weight:700;}
+.hd-total{font-size:1.5rem;font-weight:700;font-family:'DM Mono',monospace;color:var(--at);letter-spacing:-.03em;}
+.hd-unit{font-size:.85rem;font-weight:500;color:var(--sub);margin-left:3px;}
+.hd-right{display:flex;align-items:center;gap:12px;}
+
+/* Period switcher */
+.psw{display:flex;border:2px solid var(--bor);border-radius:8px;overflow:hidden;}
+.pbtn{background:none;border:none;padding:7px 18px;font-size:.85rem;font-family:inherit;font-weight:600;cursor:pointer;color:var(--sub);}
+.pbtn.on{background:var(--txt);color:#fff;}
+
+/* Lang toggle */
+.ltog{display:flex;border:2px solid var(--bor);border-radius:8px;overflow:hidden;}
+.lbtn{background:none;border:none;padding:7px 14px;font-size:.82rem;font-family:inherit;font-weight:500;cursor:pointer;color:var(--sub);}
+.lbtn.on{background:var(--txt);color:#fff;}
+
+/* ===== Main layout ===== */
+.main{max-width:1280px;margin:0 auto;padding:28px 28px 60px;}
+
+/* ===== Section ===== */
+.section{margin-bottom:40px;}
+.sec-hd{display:flex;align-items:center;gap:10px;margin-bottom:20px;padding-bottom:12px;border-bottom:2px solid var(--bor);}
+.sec-num{width:28px;height:28px;border-radius:50%;background:var(--txt);color:#fff;font-size:.8rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.sec-title{font-size:1.1rem;font-weight:700;}
+.sec-sub{font-size:.82rem;color:var(--sub);margin-left:auto;}
+
+/* ===== KPI strip ===== */
+.kstrip{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:12px;margin-bottom:20px;}
+.kcard{background:var(--sur);border:2px solid var(--bor);border-radius:12px;padding:16px 18px;position:relative;overflow:hidden;}
+.kcard.big{border-top:4px solid var(--at);}
+.kcard.cl{border-top:4px solid var(--al);}
+.kcard.cp{border-top:4px solid var(--ap);}
+.kcard.cm{border-top:4px solid var(--am);}
+.klbl{font-size:.78rem;font-weight:600;color:var(--sub);margin-bottom:6px;}
+.kval{font-size:1.6rem;font-weight:700;font-family:'DM Mono',monospace;letter-spacing:-.03em;line-height:1;margin-bottom:3px;}
+.kcard.big .kval{color:var(--at);}
+.kcard.cl .kval{color:var(--al);}
+.kcard.cp .kval{color:var(--ap);}
+.kcard.cm .kval{color:var(--am);}
+.kunit{font-size:.82rem;font-weight:500;margin-left:3px;opacity:.75;}
+.kshare{font-size:.82rem;color:var(--sub);font-weight:600;}
+.kbar{height:4px;border-radius:2px;margin-top:8px;background:var(--borl);}
+.kbar-fill{height:100%;border-radius:2px;}
+
+/* KPI strip for channels */
+.kstrip5{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px;}
+.kcard.web{border-top:4px solid var(--web);}
+.kcard.tel{border-top:4px solid var(--tel);}
+.kcard.kol{border-top:4px solid var(--kol);}
+.kcard.ec{border-top:4px solid var(--ec);}
+.kcard.oth{border-top:4px solid var(--oth);}
+.kcard.web .kval{color:var(--web);}
+.kcard.tel .kval{color:var(--tel);}
+.kcard.kol .kval{color:var(--kol);}
+.kcard.ec .kval{color:var(--ec);}
+.kcard.oth .kval{color:var(--oth);}
+
+/* ===== Chart grid ===== */
+.cgrid2{display:grid;grid-template-columns:3fr 2fr;gap:14px;margin-bottom:14px;}
+.cgrid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px;}
+.card{background:var(--sur);border:2px solid var(--bor);border-radius:12px;padding:18px 20px;}
+.ctit{font-size:.84rem;font-weight:700;color:var(--txt);margin-bottom:14px;}
+.cw{position:relative;height:240px;}
+.cw-sm{position:relative;height:200px;}
+.cw-lg{position:relative;height:300px;}
+
+/* ===== Cross section ===== */
+.cross-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
+.hm table{width:100%;border-collapse:collapse;font-size:.8rem;}
+.hm th{text-align:center;padding:7px 8px;border:1px solid var(--bor);background:var(--bg);font-weight:700;font-size:.73rem;white-space:nowrap;}
+.hm th:first-child{text-align:left;}
+.hm td{text-align:right;padding:7px 8px;border:1px solid var(--bor);font-family:'DM Mono',monospace;font-size:.8rem;white-space:nowrap;font-weight:600;}
+.hm td:first-child{text-align:left;font-family:'Noto Sans JP','Noto Sans TC',sans-serif;font-weight:600;}
+.hm .hmtot td{font-weight:700;border-top:2px solid var(--bor);background:var(--bg)!important;}
+.hmw{overflow-x:auto;}
+
+/* Cross filter */
+.cfrow{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;}
+.csel{padding:5px 10px;border:1.5px solid var(--bor);border-radius:6px;font-family:inherit;font-size:.83rem;color:var(--txt);background:var(--sur);cursor:pointer;}
+.cadd{padding:5px 14px;background:var(--txt);color:#fff;border:none;border-radius:6px;font-family:inherit;font-size:.82rem;font-weight:600;cursor:pointer;}
+.cadd:hover{opacity:.85;}
+.cclr{padding:5px 12px;background:none;color:var(--sub);border:1.5px solid var(--bor);border-radius:6px;font-family:inherit;font-size:.82rem;cursor:pointer;}
+.ctags{display:flex;flex-wrap:wrap;gap:6px;min-height:18px;margin-bottom:8px;}
+.ctag{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:.78rem;font-weight:600;}
+.ctag button{background:none;border:none;cursor:pointer;font-size:.88rem;line-height:1;opacity:.7;}
+
+/* ===== Table ===== */
+.tw{overflow-x:auto;}
+table.dt{width:100%;border-collapse:collapse;font-size:.8rem;}
+table.dt th{text-align:right;color:var(--txt);font-weight:700;padding:7px 10px;border-bottom:2px solid var(--bor);font-family:'DM Mono',monospace;font-size:.73rem;white-space:nowrap;background:var(--bg);}
+table.dt th:first-child{text-align:left;}
+table.dt td{text-align:right;padding:6px 10px;border-bottom:1px solid var(--borl);font-family:'DM Mono',monospace;font-size:.8rem;color:var(--txt);white-space:nowrap;}
+table.dt td:first-child{text-align:left;font-family:'Noto Sans JP','Noto Sans TC',sans-serif;font-size:.82rem;font-weight:500;}
+table.dt tr:hover:not(.tr) td{background:var(--bg);}
+table.dt .tr td{font-weight:700;border-top:2px solid var(--bor);border-bottom:none;}
+table.dt .tr.ct td{color:var(--at);background:var(--atb);}
+table.dt .tr.cl td{color:var(--al);background:var(--alb);}
+table.dt .tr.cp td{color:var(--ap);background:var(--apb);}
+table.dt .tr.cm td{color:var(--am);background:var(--amb);}
+.bdg{display:inline-block;padding:2px 7px;border-radius:4px;font-size:.73rem;font-weight:600;}
+.bl{background:var(--alb);color:var(--al);}
+.bp{background:var(--apb);color:var(--ap);}
+.bm{background:var(--amb);color:var(--am);}
+.bweb{background:var(--webb);color:var(--web);}
+.btel{background:var(--telb);color:var(--tel);}
+.bkol{background:var(--kolb);color:var(--kol);}
+.bec{background:var(--ecb);color:var(--ec);}
+.both{background:var(--othb);color:var(--oth);}
+
+/* Loading */
+.loading{display:flex;align-items:center;justify-content:center;height:300px;color:var(--sub);gap:10px;}
+.spin{width:22px;height:22px;border:3px solid var(--bor);border-top-color:var(--at);border-radius:50%;animation:sp .7s linear infinite;}
+@keyframes sp{to{transform:rotate(360deg);}}
+.err{color:var(--at);text-align:center;padding:40px;}
+
+@media(max-width:900px){
+  .kstrip{grid-template-columns:1fr 1fr;}
+  .kstrip5{grid-template-columns:repeat(3,1fr);}
+  .cgrid2{grid-template-columns:1fr;}
+  .cross-grid{grid-template-columns:1fr;}
+  .sticky-hd{flex-wrap:wrap;}
+  .main{padding:16px;}
+}
+</style>
+</head>
+<body>
+
+<!-- Sticky Header -->
+<div class="sticky-hd">
+  <div class="hd-left">
+    <div class="hd-title" id="h-title">FY25 銷售故事</div>
+    <div><span class="hd-total" id="h-total">—</span><span class="hd-unit" id="h-unit">萬元</span></div>
+  </div>
+  <div class="hd-right">
+    <div class="psw">
+      <button class="pbtn on" id="pb-y" onclick="setPeriod('y')">年度</button>
+      <button class="pbtn" id="pb-m" onclick="setPeriod('m')">月次</button>
+      <button class="pbtn" id="pb-q" onclick="setPeriod('q')">季別</button>
+    </div>
+    <div class="ltog">
+      <button class="lbtn" onclick="setLang('ja')">日本語</button>
+      <button class="lbtn on" onclick="setLang('zh')">繁中</button>
+    </div>
+  </div>
+</div>
+
+<div id="app"><div class="loading"><div class="spin"></div><span>載入資料中…</span></div></div>
+
+<script>
+// ===== 定数 =====
+var MONTHS = ['4月','5月','6月','7月','8月','9月','10月','11月','12月','1月','2月','3月'];
+var QUARTERS = [
+  {key:'Q1',months:['4月','5月','6月']},
+  {key:'Q2',months:['7月','8月','9月']},
+  {key:'Q3',months:['10月','11月','12月']},
+  {key:'Q4',months:['1月','2月','3月']}
+];
+var CATS = ['學習','周邊','Mirafeel'];
+var CCOLORS = {'學習':'#2563eb','周邊':'#059669','Mirafeel':'#7c3aed'};
+var BDGCLS = {'學習':'bl','周邊':'bp','Mirafeel':'bm'};
+
+// 通路グループ定義
+var CH_GROUPS = [
+  {key:'WEB', channels:['官網'], color:'#0891b2', bg:'#e0f2fe', cls:'web'},
+  {key:'EC',  channels:['蝦皮'], color:'#059669', bg:'#ecfdf5', cls:'ec'},
+  {key:'TEL', channels:['電銷'], color:'#d97706', bg:'#fef3c7', cls:'tel'},
+  {key:'KOL', channels:['團購'], color:'#7c3aed', bg:'#f5f3ff', cls:'kol'},
+  {key:'その他', channels:['經代銷','其他'], color:'#94a3b8', bg:'#f1f5f9', cls:'oth'}
+];
+
+var XCOL = ['#0f172a','#0891b2','#d97706','#7c3aed','#dc2626','#059669','#be185d'];
+
+var I18N = {
+  ja:{
+    title:'FY25 売上ストーリー',unit:'万元',
+    s1:'商品群で分解',s2:'通路で分解',s3:'クロス分析',s4:'時系列推移',
+    total:'合計',cat:'商品群',ch:'通路',
+    trend:'月次推移',donut:'構成比',tbl:'明細',
+    realnum:'実数',share:'構成比',
+    crossChart:'絞り込み比較（折れ線）',heatmap:'クロスヒートマップ',
+    crossadd:'追加',crossclr:'消去',crossall:'全て',
+    pY:'年度',pM:'月次',pQ:'季別',
+    catnames:{'學習':'学習','周邊':'周邊','Mirafeel':'Mirafeel'},
+    chgnames:{'WEB':'WEB','EC':'EC','TEL':'TEL','KOL':'KOL','その他':'その他'}
+  },
+  zh:{
+    title:'FY25 銷售故事',unit:'萬元',
+    s1:'商品群分解',s2:'通路分解',s3:'交叉分析',s4:'時序趨勢',
+    total:'合計',cat:'商品群',ch:'通路',
+    trend:'月次趨勢',donut:'構成比',tbl:'明細',
+    realnum:'實數',share:'佔比',
+    crossChart:'篩選比較（折線圖）',heatmap:'交叉熱力圖',
+    crossadd:'新增',crossclr:'清除',crossall:'全部',
+    pY:'年度',pM:'月次',pQ:'季別',
+    catnames:{'學習':'學習','周邊':'周邊','Mirafeel':'Mirafeel'},
+    chgnames:{'WEB':'WEB','EC':'EC','TEL':'TEL','KOL':'KOL','その他':'其他'}
+  }
+};
+
+var lang = 'zh';
+var period = 'y'; // y/m/q
+var charts = {};
+var globalRows = null;
+var crossSeries = [];
+
+function t(k){ return I18N[lang][k]; }
+function cn(c){ return I18N[lang].catnames[c]||c; }
+function cg(g){ return I18N[lang].chgnames[g]||g; }
+function fw(n){ return (n/10000).toFixed(1); }
+function pct(n,tot){ return tot?((n/tot)*100).toFixed(1)+'%':'—'; }
+
+// ===== Period labels =====
+function getPeriodList(){
+  if(period==='q') return QUARTERS.map(function(q){return q.key;});
+  return MONTHS;
+}
+function getPeriodLabel(){ return period==='y'?t('pY'):period==='m'?t('pM'):t('pQ'); }
+
+// ===== Lang & Period =====
+function setLang(l){
+  lang=l;
+  document.querySelectorAll('.lbtn').forEach(function(b){
+    b.classList.toggle('on',b.textContent.includes(l==='ja'?'日本語':'繁中'));
+  });
+  if(globalRows) render();
+}
+function setPeriod(p){
+  period=p;
+  ['y','m','q'].forEach(function(k){
+    document.getElementById('pb-'+k).classList.toggle('on',k===p);
+  });
+  if(globalRows) render();
+}
+
+// ===== Parse CSV =====
+function parseCSV(text){
+  var lines=text.trim().split('\n'), hdr=lines[0].split(',');
+  return lines.slice(1).map(function(line){
+    var v=line.split(','), o={};
+    hdr.forEach(function(h,i){ var s=(v[i]||'').trim(); o[h.trim()]=(s!==''&&!isNaN(s))?Number(s):s; });
+    return o;
+  });
+}
+
+// ===== Aggregation =====
+// カテゴリ別・月次集計
+function aggByCat(rows){
+  var r={};
+  rows.forEach(function(row){
+    var c=row.category;
+    if(!r[c]) r[c]={};
+    MONTHS.forEach(function(m){ r[c][m]=(r[c][m]||0)+(row[m]||0); });
+  });
+  return r;
+}
+
+// 通路グループ別・月次集計
+function aggByGroup(rows){
+  var r={};
+  CH_GROUPS.forEach(function(g){ r[g.key]={}; MONTHS.forEach(function(m){ r[g.key][m]=0; }); });
+  rows.forEach(function(row){
+    CH_GROUPS.forEach(function(g){
+      if(g.channels.indexOf(row.channel)>=0){
+        MONTHS.forEach(function(m){ r[g.key][m]+=(row[m]||0); });
+      }
+    });
+  });
+  return r;
+}
+
+// 期間の値を取得（月次 or 季別）
+function periodVal(monthMap, pkey){
+  if(period==='q'){
+    var q=QUARTERS.filter(function(qq){return qq.key===pkey;})[0];
+    if(!q) return 0;
+    return q.months.reduce(function(s,m){return s+(monthMap[m]||0);},0);
+  }
+  return monthMap[pkey]||0;
+}
+
+// カテゴリ×グループ クロス集計（期間合計）
+function crossAgg(rows){
+  var mat={};
+  CATS.forEach(function(cat){ mat[cat]={}; CH_GROUPS.forEach(function(g){ mat[cat][g.key]=0; }); });
+  rows.forEach(function(row){
+    var g=CH_GROUPS.filter(function(gg){ return gg.channels.indexOf(row.channel)>=0; })[0];
+    if(!g) return;
+    var mList = period==='q' ? QUARTERS.reduce(function(a,q){return a.concat(q.months);},[]): MONTHS;
+    var val=mList.reduce(function(s,m){return s+(row[m]||0);},0);
+    if(mat[row.category]) mat[row.category][g.key]=(mat[row.category][g.key]||0)+val;
+  });
+  return mat;
+}
+
+// ===== Chart helpers =====
+function gc(id){ if(charts[id]){ charts[id].destroy(); delete charts[id]; } }
+var GC='#eef0f7', TS={color:'#0f172a',font:{size:12,weight:'600'}};
+
+function mkBar(id,labels,datasets,unit,stacked){
+  gc(id); var el=document.getElementById(id); if(!el) return;
+  var st=stacked!==false;
+  charts[id]=new Chart(el,{type:'bar',data:{labels:labels,datasets:datasets},options:{
+    responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{labels:{color:'#0f172a',font:{size:11,weight:'600'}}}},
+    scales:{
+      x:{stacked:st,ticks:TS,grid:{color:GC}},
+      y:{stacked:st,ticks:{color:'#0f172a',font:{size:11,weight:'600'},callback:function(v){return v+unit;}},grid:{color:GC}}
+    }
+  }});
+}
+
+function mkDonut(id,labels,data,colors){
+  gc(id); var el=document.getElementById(id); if(!el) return;
+  var total=data.reduce(function(a,b){return a+b;},0);
+  charts[id]=new Chart(el,{type:'doughnut',data:{labels:labels,datasets:[{data:data,backgroundColor:colors,borderWidth:2,borderColor:'#fff',hoverOffset:6}]},options:{
+    responsive:true,maintainAspectRatio:false,cutout:'55%',
+    plugins:{
+      legend:{position:'bottom',labels:{color:'#0f172a',font:{size:11,weight:'600'},padding:10}},
+      tooltip:{callbacks:{label:function(ctx){
+        return ' '+ctx.label+': '+fw(ctx.parsed*10000)+' ('+(ctx.parsed/total*100).toFixed(1)+'%)';
+      }}}
+    },
+    animation:{onComplete:function(){drawPct(this);}}
+  }});
+}
+
+function drawPct(chart){
+  var ctx=chart.ctx,meta=chart.getDatasetMeta(0);
+  var total=chart.data.datasets[0].data.reduce(function(a,b){return a+b;},0);
+  ctx.save(); ctx.font='700 11px DM Mono,monospace'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  meta.data.forEach(function(arc,i){
+    var pct2=(chart.data.datasets[0].data[i]/total*100).toFixed(1)+'%';
+    var angle=(arc.startAngle+arc.endAngle)/2, r=(arc.innerRadius+arc.outerRadius)/2;
+    ctx.fillStyle='#fff'; ctx.fillText(pct2,arc.x+Math.cos(angle)*r,arc.y+Math.sin(angle)*r);
+  });
+  ctx.restore();
+}
+
+function mkLine(id,labels,datasets,unit){
+  gc(id); var el=document.getElementById(id); if(!el) return;
+  charts[id]=new Chart(el,{type:'line',data:{labels:labels,datasets:datasets},options:{
+    responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{labels:{color:'#0f172a',font:{size:11,weight:'600'}}}},
+    scales:{
+      x:{ticks:TS,grid:{color:GC}},
+      y:{ticks:{color:'#0f172a',font:{size:11,weight:'600'},callback:function(v){return v+unit;}},grid:{color:GC}}
+    }
+  }});
+}
+
+// ===== Cross filter =====
+function addSeries(){
+  var catSel=document.getElementById('x-cat');
+  var grpSel=document.getElementById('x-grp');
+  if(!catSel||!grpSel) return;
+  var cat=catSel.value, grp=grpSel.value;
+  var label=(cat?cn(cat):t('crossall'))+' × '+(grp?cg(grp):t('crossall'));
+  if(crossSeries.filter(function(s){return s.cat===cat&&s.grp===grp;}).length) return;
+  var color=XCOL[crossSeries.length%XCOL.length];
+  crossSeries.push({cat:cat,grp:grp,label:label,color:color});
+  renderCrossTags();
+  renderCrossChart();
+}
+
+function rmSeries(idx){
+  crossSeries.splice(idx,1);
+  renderCrossTags();
+  renderCrossChart();
+}
+
+function clrSeries(){
+  crossSeries=[];
+  renderCrossTags();
+  renderCrossChart();
+}
+
+function renderCrossTags(){
+  var box=document.getElementById('x-tags'); if(!box) return;
+  box.innerHTML='';
+  crossSeries.forEach(function(s,i){
+    var tag=document.createElement('span');
+    tag.className='ctag';
+    tag.style.background=s.color+'22'; tag.style.color=s.color; tag.style.border='1.5px solid '+s.color;
+    tag.innerHTML=s.label+' <button onclick="rmSeries('+i+')">✕</button>';
+    box.appendChild(tag);
+  });
+}
+
+function getSeriesData(cat,grp){
+  if(!globalRows) return getPeriodList().map(function(){return 0;});
+  var rows=globalRows.filter(function(r){
+    var catOk=(!cat||r.category===cat);
+    var grpOk=!grp;
+    if(grp){
+      var g=CH_GROUPS.filter(function(gg){return gg.key===grp;})[0];
+      grpOk=g&&g.channels.indexOf(r.channel)>=0;
+    }
+    return catOk&&grpOk;
+  });
+  return getPeriodList().map(function(pkey){
+    if(period==='q'){
+      var q=QUARTERS.filter(function(qq){return qq.key===pkey;})[0];
+      if(!q) return 0;
+      return parseFloat((rows.reduce(function(s,r){return s+q.months.reduce(function(ss,m){return ss+(r[m]||0);},0);},0)/10000).toFixed(1));
+    }
+    return parseFloat((rows.reduce(function(s,r){return s+(r[pkey]||0);},0)/10000).toFixed(1));
+  });
+}
+
+function renderCrossChart(){
+  gc('c-cross');
+  var el=document.getElementById('c-cross'); if(!el) return;
+  if(!crossSeries.length) return;
+  var unit=lang==='zh'?' 萬':' 万';
+  mkLine('c-cross',getPeriodList(),crossSeries.map(function(s){
+    return {label:s.label,data:getSeriesData(s.cat,s.grp),borderColor:s.color,backgroundColor:s.color+'22',borderWidth:2.5,pointRadius:4,tension:0.3,fill:false};
+  }),unit);
+}
+
+// ===== Render =====
+function render(){
+  if(!globalRows) return;
+  var rows=globalRows;
+  var unit=lang==='zh'?' 萬':' 万';
+  var pList=getPeriodList();
+
+  var byCat=aggByCat(rows);
+  var byGrp=aggByGroup(rows);
+
+  // 期間合計（カテゴリ別）
+  var catTots={};
+  CATS.forEach(function(cat){
+    catTots[cat]=MONTHS.reduce(function(s,m){return s+(byCat[cat]?byCat[cat][m]||0:0);},0);
+  });
+  var grand=CATS.reduce(function(s,cat){return s+catTots[cat];},0);
+
+  // 期間合計（グループ別）
+  var grpTots={};
+  CH_GROUPS.forEach(function(g){
+    grpTots[g.key]=MONTHS.reduce(function(s,m){return s+(byGrp[g.key]?byGrp[g.key][m]||0:0);},0);
+  });
+
+  // ヘッダー更新
+  document.getElementById('h-title').textContent=t('title');
+  document.getElementById('h-total').textContent=fw(grand);
+  document.getElementById('h-unit').textContent=t('unit');
+  document.getElementById('pb-y').textContent=t('pY');
+  document.getElementById('pb-m').textContent=t('pM');
+  document.getElementById('pb-q').textContent=t('pQ');
+
+  // ===== Build HTML =====
+  var html='<div class="main">';
+
+  // ---- Section 1: 商品群 ----
+  html+='<div class="section">';
+  html+='<div class="sec-hd"><div class="sec-num">1</div><div class="sec-title">'+t('s1')+'</div><div class="sec-sub">'+getPeriodLabel()+'</div></div>';
+
+  // KPI strip
+  html+='<div class="kstrip">';
+  html+='<div class="kcard big"><div class="klbl">'+t('total')+'</div><div class="kval">'+fw(grand)+'<span class="kunit">'+t('unit')+'</span></div><div class="kshare">100.0%</div><div class="kbar"><div class="kbar-fill" style="width:100%;background:var(--at)"></div></div></div>';
+  CATS.forEach(function(cat){
+    html+='<div class="kcard '+BDGCLS[cat].replace('b','')+'">';
+    html+='<div class="klbl">'+cn(cat)+'</div>';
+    html+='<div class="kval">'+fw(catTots[cat])+'<span class="kunit">'+t('unit')+'</span></div>';
+    html+='<div class="kshare">'+pct(catTots[cat],grand)+'</div>';
+    var w=grand?Math.round(catTots[cat]/grand*100):0;
+    html+='<div class="kbar"><div class="kbar-fill" style="width:'+w+'%;background:'+CCOLORS[cat]+'"></div></div>';
+    html+='</div>';
+  });
+  html+='</div>';
+
+  // Chart + Donut
+  html+='<div class="cgrid2">';
+  html+='<div class="card"><div class="ctit">'+t('trend')+'（'+t('unit')+'）</div><div class="cw"><canvas id="c-cat-bar"></canvas></div></div>';
+  html+='<div class="card"><div class="ctit">'+t('donut')+'</div><div class="cw"><canvas id="c-cat-donut"></canvas></div></div>';
+  html+='</div>';
+
+  // Table
+  html+='<div class="card"><div class="ctit">'+t('tbl')+'</div><div class="tw"><table class="dt">';
+  html+='<thead><tr><th>'+t('cat')+'</th>'+pList.map(function(p){return '<th>'+p+'</th>';}).join('')+'<th>'+t('total')+'</th><th>'+t('share')+'</th></tr></thead><tbody>';
+  CATS.forEach(function(cat){
+    html+='<tr><td><span class="bdg '+BDGCLS[cat]+'">'+cn(cat)+'</span></td>';
+    html+=pList.map(function(pkey){
+      var v=byCat[cat]?periodVal(byCat[cat],pkey):0;
+      return '<td>'+fw(v)+'</td>';
+    }).join('');
+    html+='<td><strong>'+fw(catTots[cat])+'</strong></td><td>'+pct(catTots[cat],grand)+'</td></tr>';
+  });
+  html+='<tr class="tr ct"><td>'+t('total')+'</td>'+pList.map(function(pkey){
+    var v=CATS.reduce(function(s,cat){return s+(byCat[cat]?periodVal(byCat[cat],pkey):0);},0);
+    return '<td>'+fw(v)+'</td>';
+  }).join('')+'<td>'+fw(grand)+'</td><td>100.0%</td></tr>';
+  html+='</tbody></table></div></div>';
+  html+='</div>'; // end section 1
+
+  // ---- Section 2: 通路 ----
+  html+='<div class="section">';
+  html+='<div class="sec-hd"><div class="sec-num">2</div><div class="sec-title">'+t('s2')+'</div><div class="sec-sub">'+getPeriodLabel()+'</div></div>';
+
+  // KPI strip5
+  html+='<div class="kstrip5">';
+  CH_GROUPS.forEach(function(g){
+    html+='<div class="kcard '+g.cls+'">';
+    html+='<div class="klbl">'+cg(g.key)+'</div>';
+    html+='<div class="kval">'+fw(grpTots[g.key])+'<span class="kunit">'+t('unit')+'</span></div>';
+    html+='<div class="kshare">'+pct(grpTots[g.key],grand)+'</div>';
+    var w=grand?Math.round(grpTots[g.key]/grand*100):0;
+    html+='<div class="kbar"><div class="kbar-fill" style="width:'+w+'%;background:'+g.color+'"></div></div>';
+    html+='</div>';
+  });
+  html+='</div>';
+
+  // Chart + Donut
+  html+='<div class="cgrid2">';
+  html+='<div class="card"><div class="ctit">'+t('trend')+'（'+t('unit')+'）</div><div class="cw"><canvas id="c-grp-bar"></canvas></div></div>';
+  html+='<div class="card"><div class="ctit">'+t('donut')+'</div><div class="cw"><canvas id="c-grp-donut"></canvas></div></div>';
+  html+='</div>';
+
+  // Table
+  html+='<div class="card"><div class="ctit">'+t('tbl')+'</div><div class="tw"><table class="dt">';
+  html+='<thead><tr><th>'+t('ch')+'</th>'+pList.map(function(p){return '<th>'+p+'</th>';}).join('')+'<th>'+t('total')+'</th><th>'+t('share')+'</th></tr></thead><tbody>';
+  CH_GROUPS.forEach(function(g){
+    html+='<tr><td><span class="bdg b'+g.cls+'">'+cg(g.key)+'</span></td>';
+    html+=pList.map(function(pkey){
+      var v=byGrp[g.key]?periodVal(byGrp[g.key],pkey):0;
+      return '<td>'+fw(v)+'</td>';
+    }).join('');
+    html+='<td><strong>'+fw(grpTots[g.key])+'</strong></td><td>'+pct(grpTots[g.key],grand)+'</td></tr>';
+  });
+  html+='<tr class="tr ct"><td>'+t('total')+'</td>'+pList.map(function(pkey){
+    var v=CH_GROUPS.reduce(function(s,g){return s+(byGrp[g.key]?periodVal(byGrp[g.key],pkey):0);},0);
+    return '<td>'+fw(v)+'</td>';
+  }).join('')+'<td>'+fw(grand)+'</td><td>100.0%</td></tr>';
+  html+='</tbody></table></div></div>';
+  html+='</div>'; // end section 2
+
+  // ---- Section 3: クロス ----
+  html+='<div class="section">';
+  html+='<div class="sec-hd"><div class="sec-num">3</div><div class="sec-title">'+t('s3')+'</div><div class="sec-sub">'+getPeriodLabel()+'</div></div>';
+
+  var mat=crossAgg(rows);
+  var maxV=0;
+  CATS.forEach(function(cat){ CH_GROUPS.forEach(function(g){ if(mat[cat][g.key]>maxV) maxV=mat[cat][g.key]; }); });
+  function hbg(v){ if(!v||!maxV) return '#f8fafc'; var r=v/maxV; return r>0.7?'#1d4ed8':r>0.4?'#3b82f6':r>0.2?'#93c5fd':r>0.05?'#dbeafe':'#f0f9ff'; }
+  function hfg(v){ return (v&&maxV&&v/maxV>0.4)?'#fff':'var(--txt)'; }
+
+  html+='<div class="cross-grid">';
+
+  // Heatmap
+  html+='<div class="card"><div class="ctit">'+t('heatmap')+'（'+t('unit')+'）</div><div class="hmw hm"><table>';
+  html+='<thead><tr><th>'+t('cat')+' \\ '+t('ch')+'</th>'+CH_GROUPS.map(function(g){return '<th>'+cg(g.key)+'</th>';}).join('')+'<th>'+t('total')+'</th></tr></thead><tbody>';
+  var catRowTots={};
+  CATS.forEach(function(cat){
+    catRowTots[cat]=CH_GROUPS.reduce(function(s,g){return s+mat[cat][g.key];},0);
+    html+='<tr><td><span class="bdg '+BDGCLS[cat]+'">'+cn(cat)+'</span></td>';
+    CH_GROUPS.forEach(function(g){
+      var v=mat[cat][g.key];
+      html+='<td style="background:'+hbg(v)+';color:'+hfg(v)+'">'+fw(v)+'</td>';
+    });
+    html+='<td><strong>'+fw(catRowTots[cat])+'</strong></td></tr>';
+  });
+  var colTots={};
+  CH_GROUPS.forEach(function(g){ colTots[g.key]=CATS.reduce(function(s,cat){return s+mat[cat][g.key];},0); });
+  html+='<tr class="hmtot"><td>'+t('total')+'</td>'+CH_GROUPS.map(function(g){return '<td>'+fw(colTots[g.key])+'</td>';}).join('')+'<td>'+fw(grand)+'</td></tr>';
+  html+='</tbody></table></div></div>';
+
+  // Cross filter chart
+  var catOpts='<option value="">— '+t('crossall')+' —</option>'+CATS.map(function(cat){return '<option value="'+cat+'">'+cn(cat)+'</option>';}).join('');
+  var grpOpts='<option value="">— '+t('crossall')+' —</option>'+CH_GROUPS.map(function(g){return '<option value="'+g.key+'">'+cg(g.key)+'</option>';}).join('');
+  html+='<div class="card">'
+    +'<div class="ctit">'+t('crossChart')+'</div>'
+    +'<div class="cfrow">'
+    +'<select class="csel" id="x-cat">'+catOpts+'</select>'
+    +'<select class="csel" id="x-grp">'+grpOpts+'</select>'
+    +'<button class="cadd" onclick="addSeries()">＋ '+t('crossadd')+'</button>'
+    +'<button class="cclr" onclick="clrSeries()">✕ '+t('crossclr')+'</button>'
+    +'</div>'
+    +'<div class="ctags" id="x-tags"></div>'
+    +'<div class="cw-sm"><canvas id="c-cross"></canvas></div>'
+    +'</div>';
+
+  html+='</div>'; // cross-grid
+  html+='</div>'; // end section 3
+
+  // ---- Section 4: 時系列推移 ----
+  html+='<div class="section">';
+  html+='<div class="sec-hd"><div class="sec-num">4</div><div class="sec-title">'+t('s4')+'</div><div class="sec-sub">'+getPeriodLabel()+'</div></div>';
+
+  html+='<div class="cgrid2">';
+  html+='<div class="card"><div class="ctit">'+t('cat')+' × '+t('trend')+'（'+t('unit')+'）</div><div class="cw-lg"><canvas id="c-ts-cat"></canvas></div></div>';
+  html+='<div class="card"><div class="ctit">'+t('ch')+' × '+t('trend')+'（'+t('unit')+'）</div><div class="cw-lg"><canvas id="c-ts-grp"></canvas></div></div>';
+  html+='</div>';
+  html+='</div>'; // end section 4
+
+  html+='</div>'; // end main
+  document.getElementById('app').innerHTML=html;
+
+  // ===== Draw charts =====
+  // Cat bar
+  mkBar('c-cat-bar',pList,CATS.map(function(cat){
+    return {label:cn(cat),data:pList.map(function(pkey){return parseFloat((byCat[cat]?periodVal(byCat[cat],pkey)/10000:0).toFixed(1));}),backgroundColor:CCOLORS[cat]+'cc',borderRadius:3};
+  }),unit,true);
+
+  // Cat donut
+  mkDonut('c-cat-donut',CATS.map(cn),CATS.map(function(cat){return parseFloat((catTots[cat]/10000).toFixed(1));}),CATS.map(function(c){return CCOLORS[c];}));
+
+  // Grp bar
+  mkBar('c-grp-bar',pList,CH_GROUPS.map(function(g){
+    return {label:cg(g.key),data:pList.map(function(pkey){return parseFloat((byGrp[g.key]?periodVal(byGrp[g.key],pkey)/10000:0).toFixed(1));}),backgroundColor:g.color+'cc',borderRadius:3};
+  }),unit,true);
+
+  // Grp donut
+  mkDonut('c-grp-donut',CH_GROUPS.map(function(g){return cg(g.key);}),CH_GROUPS.map(function(g){return parseFloat((grpTots[g.key]/10000).toFixed(1));}),CH_GROUPS.map(function(g){return g.color;}));
+
+  // Time series: cat
+  mkBar('c-ts-cat',pList,CATS.map(function(cat){
+    return {label:cn(cat),data:pList.map(function(pkey){return parseFloat((byCat[cat]?periodVal(byCat[cat],pkey)/10000:0).toFixed(1));}),backgroundColor:CCOLORS[cat]+'cc',borderRadius:3};
+  }),unit,true);
+
+  // Time series: grp
+  mkBar('c-ts-grp',pList,CH_GROUPS.map(function(g){
+    return {label:cg(g.key),data:pList.map(function(pkey){return parseFloat((byGrp[g.key]?periodVal(byGrp[g.key],pkey)/10000:0).toFixed(1));}),backgroundColor:g.color+'cc',borderRadius:3};
+  }),unit,true);
+
+  // Restore cross tags & chart
+  renderCrossTags();
+  if(crossSeries.length) renderCrossChart();
+}
+
+// ===== Boot =====
+fetch('data.csv?t='+Date.now())
+  .then(function(r){ if(!r.ok) throw new Error('CSV讀取失敗'); return r.text(); })
+  .then(function(text){ globalRows=parseCSV(text); render(); })
+  .catch(function(err){ document.getElementById('app').innerHTML='<div class="err">⚠️ '+err.message+'</div>'; });
+</script>
+</body>
+</html>
