@@ -186,16 +186,7 @@ function clearChat(){
   box.innerHTML = '<div class="chat-msg ai">チャット履歴をクリアしました。</div>';
 }
 
-// テキストエリア自動リサイズ
-document.addEventListener('DOMContentLoaded', function(){
-  var inp = document.getElementById('chat-input');
-  if(inp){
-    inp.addEventListener('input', function(){
-      this.style.height='auto';
-      this.style.height=Math.min(this.scrollHeight,100)+'px';
-    });
-  }
-});
+
 </script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;600;700&family=DM+Mono:wght@400;500;600&display=swap');
@@ -948,13 +939,26 @@ function render(){
 }
 
 // ===== Boot =====
+// イベントリスナー初期化（DOMが確実に存在してから）
+window.addEventListener('load', function(){
+  var toggleBtn = document.getElementById('chat-toggle-btn');
+  var closeBtn = document.getElementById('chat-close-btn');
+  if(toggleBtn) toggleBtn.addEventListener('click', toggleChat);
+  if(closeBtn) closeBtn.addEventListener('click', toggleChat);
+  var inp = document.getElementById('chat-input');
+  if(inp){
+    inp.addEventListener('input', function(){ this.style.height='auto'; this.style.height=Math.min(this.scrollHeight,100)+'px'; });
+    inp.addEventListener('keydown', handleKey);
+  }
+});
+
 fetch('data.csv?t='+Date.now())
   .then(function(r){ if(!r.ok) throw new Error('CSV讀取失敗'); return r.text(); })
   .then(function(text){ globalRows=parseCSV(text); render(); })
   .catch(function(err){ document.getElementById('app').innerHTML='<div class="err">⚠️ '+err.message+'</div>'; });
 </script>
 <!-- Chat Toggle Button -->
-<button class="chat-toggle" onclick="toggleChat()" title="AI分析アシスタント">💬</button>
+<button class="chat-toggle" id="chat-toggle-btn" title="AI分析アシスタント">💬</button>
 
 <!-- Chat Panel -->
 <div class="chat-panel" id="chat-panel">
@@ -965,7 +969,7 @@ fetch('data.csv?t='+Date.now())
     </div>
     <div style="display:flex;gap:6px;align-items:center;">
       <button class="chat-clear" onclick="clearChat()">クリア</button>
-      <button class="chat-close" onclick="toggleChat()">✕</button>
+      <button class="chat-close" id="chat-close-btn">✕</button>
     </div>
   </div>
   <div class="chat-ctx" id="chat-ctx">データ読み込み中…</div>
