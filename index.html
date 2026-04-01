@@ -5,189 +5,6 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FY25 銷售故事</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script>
-// ===== Chat Functions =====
-
-// ===== Chat =====
-var chatOpen = false;
-var chatHistory = [];
-
-function toggleChat(){
-  chatOpen = !chatOpen;
-  document.getElementById('chat-panel').classList.toggle('open', chatOpen);
-  if(chatOpen) updateChatCtx();
-}
-
-function updateChatCtx(){
-  var el = document.getElementById('chat-ctx');
-  if(!el || !globalRows) return;
-  var pLabel = period==='y'?'年度':period==='m'?'月次':'季別';
-  el.textContent = '現在の表示：' + pLabel + ' ｜ データ期間：FY25（4月〜3月）｜ Claudeに自動送信中';
-}
-
-function buildSystemPrompt(){
-  if(!globalRows) return 'FY25台湾売上データのアナリストです。';
-
-  var pLabel = period==='y'?'年度':period==='m'?'月次':'季別';
-  var unit = '万元（1万元=10,000元）';
-
-  // 現在の粒度でのサマリーを構築
-  var byCat = aggByCat(globalRows);
-  var byGrp = aggByGroup(globalRows);
-  var pList = getPeriodList();
-
-  // カテゴリ合計
-  var catTots = {};
-  CATS.forEach(function(c){ catTots[c]=MONTHS.reduce(function(s,m){return s+(byCat[c]?byCat[c][m]||0:0);},0); });
-  var grand = CATS.reduce(function(s,c){return s+catTots[c];},0);
-
-  // グループ合計
-  var grpTots = {};
-  CH_GROUPS.forEach(function(g){ grpTots[g.key]=MONTHS.reduce(function(s,m){return s+(byGrp[g.key]?byGrp[g.key][m]||0:0);},0); });
-
-  var prompt = 'あなたはベネッセ台湾支社（TBBS）のFY25売上データアナリストです。日本語で簡潔に回答してください。
-
-';
-  prompt += '【現在の表示設定】粒度：' + pLabel + '
-
-';
-  prompt += '【FY25年間合計】' + (grand/10000).toFixed(1) + '万元
-
-';
-
-  prompt += '【商品群別】
-';
-  CATS.forEach(function(c){
-    prompt += '- ' + (lang==='ja'?I18N.ja.catnames[c]:I18N.zh.catnames[c]) + ': ' + (catTots[c]/10000).toFixed(1) + '万元 (' + (catTots[c]/grand*100).toFixed(1) + '%)
-';
-  });
-
-  prompt += '
-【通路（チャネル）グループ別】
-';
-  CH_GROUPS.forEach(function(g){
-    prompt += '- ' + g.key + ': ' + (grpTots[g.key]/10000).toFixed(1) + '万元 (' + (grpTots[g.key]/grand*100).toFixed(1) + '%)
-';
-  });
-
-  // 月次データ（詳細）
-  if(period==='m' || period==='y'){
-    prompt += '
-【月別合計（万元）】
-';
-    MONTHS.forEach(function(m){
-      var v = CATS.reduce(function(s,c){return s+(byCat[c]?byCat[c][m]||0:0);},0);
-      prompt += m + ': ' + (v/10000).toFixed(1) + '　';
-    });
-    prompt += '
-';
-
-    prompt += '
-【商品群×月別（万元）】
-';
-    CATS.forEach(function(c){
-      prompt += (lang==='ja'?I18N.ja.catnames[c]:c) + ': ';
-      MONTHS.forEach(function(m){ prompt += m + (byCat[c]?(byCat[c][m]||0)/10000:0).toFixed(1) + ' '; });
-      prompt += '
-';
-    });
-
-    prompt += '
-【通路×月別（万元）】
-';
-    CH_GROUPS.forEach(function(g){
-      prompt += g.key + ': ';
-      MONTHS.forEach(function(m){ prompt += m + (byGrp[g.key]?(byGrp[g.key][m]||0)/10000:0).toFixed(1) + ' '; });
-      prompt += '
-';
-    });
-  }
-
-  if(period==='q'){
-    prompt += '
-【季別合計（万元）】
-';
-    QUARTERS.forEach(function(q){
-      var v = CATS.reduce(function(s,c){return s+(byCat[c]?q.months.reduce(function(ss,m){return ss+(byCat[c][m]||0);},0):0);},0);
-      prompt += q.key + '(' + q.months[0] + '〜' + q.months[2] + '): ' + (v/10000).toFixed(1) + '万元
-';
-    });
-  }
-
-  prompt += '
-簡潔・具体的に答えてください。数字を引用しながら回答してください。';
-  return prompt;
-}
-
-function handleKey(e){
-  if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendChat(); }
-}
-
-async function sendChat(){
-  var input = document.getElementById('chat-input');
-  var msg = input.value.trim();
-  if(!msg) return;
-
-  // UIに追加
-  addMsg('user', msg);
-  input.value = '';
-  input.style.height = 'auto';
-
-  var sendBtn = document.getElementById('chat-send');
-  sendBtn.disabled = true;
-
-  var thinking = addMsg('ai', '考え中…', 'thinking');
-
-  chatHistory.push({role:'user', content:msg});
-
-  try {
-    var res = await fetch('/.netlify/functions/chat', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({
-        messages: chatHistory,
-        systemPrompt: buildSystemPrompt()
-      })
-    });
-
-    var data = await res.json();
-
-    thinking.remove();
-
-    if(data.error){
-      addMsg('ai', '⚠️ エラー: ' + data.error);
-    } else {
-      addMsg('ai', data.content);
-      chatHistory.push({role:'assistant', content:data.content});
-      // 履歴は直近10往復まで保持
-      if(chatHistory.length > 20) chatHistory = chatHistory.slice(-20);
-    }
-  } catch(e) {
-    thinking.remove();
-    addMsg('ai', '⚠️ 通信エラー。Netlify Functionsの設定を確認してください。');
-  }
-
-  sendBtn.disabled = false;
-}
-
-function addMsg(role, text, cls){
-  var box = document.getElementById('chat-msgs');
-  var el = document.createElement('div');
-  el.className = 'chat-msg ' + role + (cls?' '+cls:'');
-  el.textContent = text;
-  box.appendChild(el);
-  box.scrollTop = box.scrollHeight;
-  return el;
-}
-
-function clearChat(){
-  chatHistory = [];
-  var box = document.getElementById('chat-msgs');
-  box.innerHTML = '<div class="chat-msg ai">チャット履歴をクリアしました。</div>';
-}
-
-
-</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;600;700&family=DM+Mono:wght@400;500;600&display=swap');
 :root{
@@ -318,30 +135,25 @@ table.dt .tr.cm td{color:var(--am);background:var(--amb);}
 @keyframes sp{to{transform:rotate(360deg);}}
 .err{color:var(--at);text-align:center;padding:40px;}
 
-/* ===== Chat Panel ===== */
-.chat-toggle{position:fixed;right:20px;bottom:24px;z-index:200;width:52px;height:52px;border-radius:50%;background:#1e3a5f;color:#fff;border:none;font-size:1.4rem;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.2);display:flex;align-items:center;justify-content:center;transition:transform .2s;}
-.chat-toggle:hover{transform:scale(1.08);}
+.chat-toggle{position:fixed;right:20px;bottom:24px;z-index:200;width:52px;height:52px;border-radius:50%;background:#1e3a5f;color:#fff;border:none;font-size:1.4rem;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.2);display:flex;align-items:center;justify-content:center;}
 .chat-panel{position:fixed;right:0;top:0;bottom:0;width:360px;background:var(--sur);border-left:2px solid var(--bor);z-index:150;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .3s ease;box-shadow:-4px 0 20px rgba(0,0,0,.08);}
 .chat-panel.open{transform:translateX(0);}
 .chat-hd{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:2px solid var(--bor);background:var(--bg);}
 .chat-hd-title{font-size:.95rem;font-weight:700;display:flex;align-items:center;gap:8px;}
-.chat-hd-badge{font-size:.65rem;background:#1e3a5f;color:#fff;padding:2px 8px;border-radius:20px;font-weight:600;}
+.chat-hd-badge{font-size:.65rem;background:#1e3a5f;color:#fff;padding:2px 8px;border-radius:20px;}
 .chat-ctx{font-size:.72rem;color:var(--sub);padding:8px 14px;background:#f8f9fc;border-bottom:1px solid var(--borl);line-height:1.5;}
 .chat-msgs{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;}
 .chat-msg{max-width:88%;padding:10px 13px;border-radius:12px;font-size:.83rem;line-height:1.55;white-space:pre-wrap;word-break:break-word;}
-.chat-msg.user{background:#1e3a5f;color:#fff;align-self:flex-end;border-bottom-right-radius:3px;}
-.chat-msg.ai{background:var(--bg);border:1px solid var(--borl);align-self:flex-start;border-bottom-left-radius:3px;}
+.chat-msg.user{background:#1e3a5f;color:#fff;align-self:flex-end;}
+.chat-msg.ai{background:var(--bg);border:1px solid var(--borl);align-self:flex-start;}
 .chat-msg.thinking{color:var(--dim);font-style:italic;}
 .chat-input-area{padding:12px;border-top:2px solid var(--bor);display:flex;gap:8px;align-items:flex-end;}
-.chat-input{flex:1;padding:9px 12px;border:1.5px solid var(--bor);border-radius:8px;font-family:inherit;font-size:.83rem;resize:none;min-height:38px;max-height:100px;outline:none;line-height:1.4;}
+.chat-input{flex:1;padding:9px 12px;border:1.5px solid var(--bor);border-radius:8px;font-family:inherit;font-size:.83rem;resize:none;min-height:38px;max-height:100px;outline:none;}
 .chat-input:focus{border-color:#1e3a5f;}
-.chat-send{padding:9px 14px;background:#1e3a5f;color:#fff;border:none;border-radius:8px;font-family:inherit;font-size:.83rem;font-weight:700;cursor:pointer;flex-shrink:0;}
-.chat-send:hover{opacity:.88;}
+.chat-send{padding:9px 14px;background:#1e3a5f;color:#fff;border:none;border-radius:8px;font-family:inherit;font-size:.83rem;font-weight:700;cursor:pointer;}
 .chat-send:disabled{opacity:.4;cursor:not-allowed;}
 .chat-close{background:none;border:none;font-size:1.1rem;cursor:pointer;color:var(--sub);padding:2px 6px;}
 .chat-clear{background:none;border:1px solid var(--borl);border-radius:6px;font-size:.72rem;color:var(--sub);padding:3px 8px;cursor:pointer;}
-.chat-clear:hover{background:var(--borl);}
-
 @media(max-width:900px){
   .kstrip{grid-template-columns:1fr 1fr;}
   .kstrip5{grid-template-columns:repeat(3,1fr);}
@@ -939,46 +751,132 @@ function render(){
 }
 
 // ===== Boot =====
-// イベントリスナー初期化（DOMが確実に存在してから）
-window.addEventListener('load', function(){
-  var toggleBtn = document.getElementById('chat-toggle-btn');
-  var closeBtn = document.getElementById('chat-close-btn');
-  if(toggleBtn) toggleBtn.addEventListener('click', toggleChat);
-  if(closeBtn) closeBtn.addEventListener('click', toggleChat);
-  var inp = document.getElementById('chat-input');
-  if(inp){
-    inp.addEventListener('input', function(){ this.style.height='auto'; this.style.height=Math.min(this.scrollHeight,100)+'px'; });
-    inp.addEventListener('keydown', handleKey);
-  }
-});
-
 fetch('data.csv?t='+Date.now())
   .then(function(r){ if(!r.ok) throw new Error('CSV讀取失敗'); return r.text(); })
   .then(function(text){ globalRows=parseCSV(text); render(); })
   .catch(function(err){ document.getElementById('app').innerHTML='<div class="err">⚠️ '+err.message+'</div>'; });
 </script>
-<!-- Chat Toggle Button -->
-<button class="chat-toggle" id="chat-toggle-btn" title="AI分析アシスタント">💬</button>
 
-<!-- Chat Panel -->
+<button class="chat-toggle" id="chat-btn" title="AI分析アシスタント">💬</button>
 <div class="chat-panel" id="chat-panel">
   <div class="chat-hd">
-    <div class="chat-hd-title">
-      <span>AI 分析アシスタント</span>
-      <span class="chat-hd-badge">Claude</span>
-    </div>
+    <div class="chat-hd-title"><span>AI 分析アシスタント</span><span class="chat-hd-badge">Claude</span></div>
     <div style="display:flex;gap:6px;align-items:center;">
-      <button class="chat-clear" onclick="clearChat()">クリア</button>
+      <button class="chat-clear" id="chat-clear-btn">クリア</button>
       <button class="chat-close" id="chat-close-btn">✕</button>
     </div>
   </div>
   <div class="chat-ctx" id="chat-ctx">データ読み込み中…</div>
   <div class="chat-msgs" id="chat-msgs">
-    <div class="chat-msg ai">こんにちは！FY25の売上データについて何でも聞いてください。現在表示中のデータ（粒度・期間）を踏まえて分析します。</div>
+    <div class="chat-msg ai">こんにちは！FY25の売上データについて何でも聞いてください。</div>
   </div>
   <div class="chat-input-area">
-    <textarea class="chat-input" id="chat-input" placeholder="例：TELが8月に急増した理由は？" rows="1" onkeydown="handleKey(event)"></textarea>
-    <button class="chat-send" id="chat-send" onclick="sendChat()">送信</button>
+    <textarea class="chat-input" id="chat-input" placeholder="例：TELが8月に急増した理由は？" rows="1"></textarea>
+    <button class="chat-send" id="chat-send-btn">送信</button>
   </div>
 </div>
+
+<script>
+
+var _chatOpen = false;
+var _chatHistory = [];
+
+function _toggleChat(){
+  _chatOpen = !_chatOpen;
+  document.getElementById('chat-panel').classList.toggle('open', _chatOpen);
+  if(_chatOpen){
+    var ctx = document.getElementById('chat-ctx');
+    if(ctx && globalRows){
+      var pl = period==='y'?'年度':period==='m'?'月次':'季別';
+      ctx.textContent = '表示中：' + pl + ' | FY25（4月〜3月）| データ自動送信中';
+    }
+  }
+}
+
+function _buildPrompt(){
+  if(!globalRows) return 'FY25台湾売上データのアナリストです。';
+  var pl = period==='y'?'年度':period==='m'?'月次':'季別';
+  var bc = aggByCat(globalRows);
+  var bg = aggByGroup(globalRows);
+  var ct = {}, grand = 0;
+  CATS.forEach(function(c){ ct[c]=MONTHS.reduce(function(s,m){return s+(bc[c]?bc[c][m]||0:0);},0); grand+=ct[c]; });
+  var gt = {};
+  CH_GROUPS.forEach(function(g){ gt[g.key]=MONTHS.reduce(function(s,m){return s+(bg[g.key]?bg[g.key][m]||0:0);},0); });
+  var parts = ['あなたはベネッセ台湾支社FY25売上アナリストです。日本語で簡潔に答えてください。'];
+  parts.push('粒度:'+pl);
+  parts.push('年間合計:'+(grand/10000).toFixed(1)+'万元');
+  CATS.forEach(function(c){ parts.push((lang==='ja'?I18N.ja.catnames[c]:c)+':'+(ct[c]/10000).toFixed(1)+'万元('+(ct[c]/grand*100).toFixed(1)+'%)'); });
+  CH_GROUPS.forEach(function(g){ parts.push(g.key+':'+(gt[g.key]/10000).toFixed(1)+'万元('+(gt[g.key]/grand*100).toFixed(1)+'%)'); });
+  if(period!=='q'){
+    MONTHS.forEach(function(m){ var v=CATS.reduce(function(s,c){return s+(bc[c]?bc[c][m]||0:0);},0); parts.push(m+(v/10000).toFixed(1)); });
+  } else {
+    QUARTERS.forEach(function(q){ var v=CATS.reduce(function(s,c){return s+(bc[c]?q.months.reduce(function(ss,mm){return ss+(bc[c][mm]||0);},0):0);},0); parts.push(q.key+(v/10000).toFixed(1)+'万元'); });
+  }
+  return parts.join(' | ');
+}
+
+function _addMsg(role, text, cls){
+  var box = document.getElementById('chat-msgs');
+  var el = document.createElement('div');
+  el.className = 'chat-msg ' + role + (cls?' '+cls:'');
+  el.textContent = text;
+  box.appendChild(el);
+  box.scrollTop = box.scrollHeight;
+  return el;
+}
+
+async function _sendChat(){
+  var inp = document.getElementById('chat-input');
+  var msg = inp.value.trim();
+  if(!msg) return;
+  _addMsg('user', msg);
+  inp.value = '';
+  var sendBtn = document.getElementById('chat-send-btn');
+  sendBtn.disabled = true;
+  var thinking = _addMsg('ai', '考え中…', 'thinking');
+  _chatHistory.push({role:'user', content:msg});
+  try {
+    var res = await fetch('/.netlify/functions/chat', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({messages:_chatHistory, systemPrompt:_buildPrompt()})
+    });
+    var data = await res.json();
+    thinking.remove();
+    if(data.error){ _addMsg('ai', 'エラー: '+data.error); }
+    else {
+      _addMsg('ai', data.content);
+      _chatHistory.push({role:'assistant', content:data.content});
+      if(_chatHistory.length>20) _chatHistory=_chatHistory.slice(-20);
+    }
+  } catch(e) {
+    thinking.remove();
+    _addMsg('ai', '通信エラー: '+e.message);
+  }
+  sendBtn.disabled = false;
+}
+
+function _clearChat(){
+  _chatHistory=[];
+  document.getElementById('chat-msgs').innerHTML='<div class="chat-msg ai">クリアしました。</div>';
+}
+
+window.addEventListener('load', function(){
+  var btn = document.getElementById('chat-btn');
+  var closeBtn = document.getElementById('chat-close-btn');
+  var clearBtn = document.getElementById('chat-clear-btn');
+  var sendBtn = document.getElementById('chat-send-btn');
+  var inp = document.getElementById('chat-input');
+  if(btn) btn.addEventListener('click', _toggleChat);
+  if(closeBtn) closeBtn.addEventListener('click', _toggleChat);
+  if(clearBtn) clearBtn.addEventListener('click', _clearChat);
+  if(sendBtn) sendBtn.addEventListener('click', _sendChat);
+  if(inp){
+    inp.addEventListener('input', function(){ this.style.height='auto'; this.style.height=Math.min(this.scrollHeight,100)+'px'; });
+    inp.addEventListener('keydown', function(e){ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();_sendChat();} });
+  }
+});
+
+</script>
 </body>
+</html>
