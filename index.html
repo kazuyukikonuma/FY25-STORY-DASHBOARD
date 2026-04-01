@@ -4,7 +4,199 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>FY25 銷售故事</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js">
+
+// ===== Chat Functions =====
+
+// ===== Chat =====
+var chatOpen = false;
+var chatHistory = [];
+
+function toggleChat(){
+  chatOpen = !chatOpen;
+  document.getElementById('chat-panel').classList.toggle('open', chatOpen);
+  if(chatOpen) updateChatCtx();
+}
+
+function updateChatCtx(){
+  var el = document.getElementById('chat-ctx');
+  if(!el || !globalRows) return;
+  var pLabel = period==='y'?'年度':period==='m'?'月次':'季別';
+  el.textContent = '現在の表示：' + pLabel + ' ｜ データ期間：FY25（4月〜3月）｜ Claudeに自動送信中';
+}
+
+function buildSystemPrompt(){
+  if(!globalRows) return 'FY25台湾売上データのアナリストです。';
+
+  var pLabel = period==='y'?'年度':period==='m'?'月次':'季別';
+  var unit = '万元（1万元=10,000元）';
+
+  // 現在の粒度でのサマリーを構築
+  var byCat = aggByCat(globalRows);
+  var byGrp = aggByGroup(globalRows);
+  var pList = getPeriodList();
+
+  // カテゴリ合計
+  var catTots = {};
+  CATS.forEach(function(c){ catTots[c]=MONTHS.reduce(function(s,m){return s+(byCat[c]?byCat[c][m]||0:0);},0); });
+  var grand = CATS.reduce(function(s,c){return s+catTots[c];},0);
+
+  // グループ合計
+  var grpTots = {};
+  CH_GROUPS.forEach(function(g){ grpTots[g.key]=MONTHS.reduce(function(s,m){return s+(byGrp[g.key]?byGrp[g.key][m]||0:0);},0); });
+
+  var prompt = 'あなたはベネッセ台湾支社（TBBS）のFY25売上データアナリストです。日本語で簡潔に回答してください。
+
+';
+  prompt += '【現在の表示設定】粒度：' + pLabel + '
+
+';
+  prompt += '【FY25年間合計】' + (grand/10000).toFixed(1) + '万元
+
+';
+
+  prompt += '【商品群別】
+';
+  CATS.forEach(function(c){
+    prompt += '- ' + (lang==='ja'?I18N.ja.catnames[c]:I18N.zh.catnames[c]) + ': ' + (catTots[c]/10000).toFixed(1) + '万元 (' + (catTots[c]/grand*100).toFixed(1) + '%)
+';
+  });
+
+  prompt += '
+【通路（チャネル）グループ別】
+';
+  CH_GROUPS.forEach(function(g){
+    prompt += '- ' + g.key + ': ' + (grpTots[g.key]/10000).toFixed(1) + '万元 (' + (grpTots[g.key]/grand*100).toFixed(1) + '%)
+';
+  });
+
+  // 月次データ（詳細）
+  if(period==='m' || period==='y'){
+    prompt += '
+【月別合計（万元）】
+';
+    MONTHS.forEach(function(m){
+      var v = CATS.reduce(function(s,c){return s+(byCat[c]?byCat[c][m]||0:0);},0);
+      prompt += m + ': ' + (v/10000).toFixed(1) + '　';
+    });
+    prompt += '
+';
+
+    prompt += '
+【商品群×月別（万元）】
+';
+    CATS.forEach(function(c){
+      prompt += (lang==='ja'?I18N.ja.catnames[c]:c) + ': ';
+      MONTHS.forEach(function(m){ prompt += m + (byCat[c]?(byCat[c][m]||0)/10000:0).toFixed(1) + ' '; });
+      prompt += '
+';
+    });
+
+    prompt += '
+【通路×月別（万元）】
+';
+    CH_GROUPS.forEach(function(g){
+      prompt += g.key + ': ';
+      MONTHS.forEach(function(m){ prompt += m + (byGrp[g.key]?(byGrp[g.key][m]||0)/10000:0).toFixed(1) + ' '; });
+      prompt += '
+';
+    });
+  }
+
+  if(period==='q'){
+    prompt += '
+【季別合計（万元）】
+';
+    QUARTERS.forEach(function(q){
+      var v = CATS.reduce(function(s,c){return s+(byCat[c]?q.months.reduce(function(ss,m){return ss+(byCat[c][m]||0);},0):0);},0);
+      prompt += q.key + '(' + q.months[0] + '〜' + q.months[2] + '): ' + (v/10000).toFixed(1) + '万元
+';
+    });
+  }
+
+  prompt += '
+簡潔・具体的に答えてください。数字を引用しながら回答してください。';
+  return prompt;
+}
+
+function handleKey(e){
+  if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendChat(); }
+}
+
+async function sendChat(){
+  var input = document.getElementById('chat-input');
+  var msg = input.value.trim();
+  if(!msg) return;
+
+  // UIに追加
+  addMsg('user', msg);
+  input.value = '';
+  input.style.height = 'auto';
+
+  var sendBtn = document.getElementById('chat-send');
+  sendBtn.disabled = true;
+
+  var thinking = addMsg('ai', '考え中…', 'thinking');
+
+  chatHistory.push({role:'user', content:msg});
+
+  try {
+    var res = await fetch('/.netlify/functions/chat', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        messages: chatHistory,
+        systemPrompt: buildSystemPrompt()
+      })
+    });
+
+    var data = await res.json();
+
+    thinking.remove();
+
+    if(data.error){
+      addMsg('ai', '⚠️ エラー: ' + data.error);
+    } else {
+      addMsg('ai', data.content);
+      chatHistory.push({role:'assistant', content:data.content});
+      // 履歴は直近10往復まで保持
+      if(chatHistory.length > 20) chatHistory = chatHistory.slice(-20);
+    }
+  } catch(e) {
+    thinking.remove();
+    addMsg('ai', '⚠️ 通信エラー。Netlify Functionsの設定を確認してください。');
+  }
+
+  sendBtn.disabled = false;
+}
+
+function addMsg(role, text, cls){
+  var box = document.getElementById('chat-msgs');
+  var el = document.createElement('div');
+  el.className = 'chat-msg ' + role + (cls?' '+cls:'');
+  el.textContent = text;
+  box.appendChild(el);
+  box.scrollTop = box.scrollHeight;
+  return el;
+}
+
+function clearChat(){
+  chatHistory = [];
+  var box = document.getElementById('chat-msgs');
+  box.innerHTML = '<div class="chat-msg ai">チャット履歴をクリアしました。</div>';
+}
+
+// テキストエリア自動リサイズ
+document.addEventListener('DOMContentLoaded', function(){
+  var inp = document.getElementById('chat-input');
+  if(inp){
+    inp.addEventListener('input', function(){
+      this.style.height='auto';
+      this.style.height=Math.min(this.scrollHeight,100)+'px';
+    });
+  }
+});
+</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;600;700&family=DM+Mono:wght@400;500;600&display=swap');
 :root{
@@ -785,197 +977,4 @@ fetch('data.csv?t='+Date.now())
     <button class="chat-send" id="chat-send" onclick="sendChat()">送信</button>
   </div>
 </div>
-
-<script>
-// ===== Chat =====
-var chatOpen = false;
-var chatHistory = [];
-
-function toggleChat(){
-  chatOpen = !chatOpen;
-  document.getElementById('chat-panel').classList.toggle('open', chatOpen);
-  if(chatOpen) updateChatCtx();
-}
-
-function updateChatCtx(){
-  var el = document.getElementById('chat-ctx');
-  if(!el || !globalRows) return;
-  var pLabel = period==='y'?'年度':period==='m'?'月次':'季別';
-  el.textContent = '現在の表示：' + pLabel + ' ｜ データ期間：FY25（4月〜3月）｜ Claudeに自動送信中';
-}
-
-function buildSystemPrompt(){
-  if(!globalRows) return 'FY25台湾売上データのアナリストです。';
-
-  var pLabel = period==='y'?'年度':period==='m'?'月次':'季別';
-  var unit = '万元（1万元=10,000元）';
-
-  // 現在の粒度でのサマリーを構築
-  var byCat = aggByCat(globalRows);
-  var byGrp = aggByGroup(globalRows);
-  var pList = getPeriodList();
-
-  // カテゴリ合計
-  var catTots = {};
-  CATS.forEach(function(c){ catTots[c]=MONTHS.reduce(function(s,m){return s+(byCat[c]?byCat[c][m]||0:0);},0); });
-  var grand = CATS.reduce(function(s,c){return s+catTots[c];},0);
-
-  // グループ合計
-  var grpTots = {};
-  CH_GROUPS.forEach(function(g){ grpTots[g.key]=MONTHS.reduce(function(s,m){return s+(byGrp[g.key]?byGrp[g.key][m]||0:0);},0); });
-
-  var prompt = 'あなたはベネッセ台湾支社（TBBS）のFY25売上データアナリストです。日本語で簡潔に回答してください。
-
-';
-  prompt += '【現在の表示設定】粒度：' + pLabel + '
-
-';
-  prompt += '【FY25年間合計】' + (grand/10000).toFixed(1) + '万元
-
-';
-
-  prompt += '【商品群別】
-';
-  CATS.forEach(function(c){
-    prompt += '- ' + (lang==='ja'?I18N.ja.catnames[c]:I18N.zh.catnames[c]) + ': ' + (catTots[c]/10000).toFixed(1) + '万元 (' + (catTots[c]/grand*100).toFixed(1) + '%)
-';
-  });
-
-  prompt += '
-【通路（チャネル）グループ別】
-';
-  CH_GROUPS.forEach(function(g){
-    prompt += '- ' + g.key + ': ' + (grpTots[g.key]/10000).toFixed(1) + '万元 (' + (grpTots[g.key]/grand*100).toFixed(1) + '%)
-';
-  });
-
-  // 月次データ（詳細）
-  if(period==='m' || period==='y'){
-    prompt += '
-【月別合計（万元）】
-';
-    MONTHS.forEach(function(m){
-      var v = CATS.reduce(function(s,c){return s+(byCat[c]?byCat[c][m]||0:0);},0);
-      prompt += m + ': ' + (v/10000).toFixed(1) + '　';
-    });
-    prompt += '
-';
-
-    prompt += '
-【商品群×月別（万元）】
-';
-    CATS.forEach(function(c){
-      prompt += (lang==='ja'?I18N.ja.catnames[c]:c) + ': ';
-      MONTHS.forEach(function(m){ prompt += m + (byCat[c]?(byCat[c][m]||0)/10000:0).toFixed(1) + ' '; });
-      prompt += '
-';
-    });
-
-    prompt += '
-【通路×月別（万元）】
-';
-    CH_GROUPS.forEach(function(g){
-      prompt += g.key + ': ';
-      MONTHS.forEach(function(m){ prompt += m + (byGrp[g.key]?(byGrp[g.key][m]||0)/10000:0).toFixed(1) + ' '; });
-      prompt += '
-';
-    });
-  }
-
-  if(period==='q'){
-    prompt += '
-【季別合計（万元）】
-';
-    QUARTERS.forEach(function(q){
-      var v = CATS.reduce(function(s,c){return s+(byCat[c]?q.months.reduce(function(ss,m){return ss+(byCat[c][m]||0);},0):0);},0);
-      prompt += q.key + '(' + q.months[0] + '〜' + q.months[2] + '): ' + (v/10000).toFixed(1) + '万元
-';
-    });
-  }
-
-  prompt += '
-簡潔・具体的に答えてください。数字を引用しながら回答してください。';
-  return prompt;
-}
-
-function handleKey(e){
-  if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendChat(); }
-}
-
-async function sendChat(){
-  var input = document.getElementById('chat-input');
-  var msg = input.value.trim();
-  if(!msg) return;
-
-  // UIに追加
-  addMsg('user', msg);
-  input.value = '';
-  input.style.height = 'auto';
-
-  var sendBtn = document.getElementById('chat-send');
-  sendBtn.disabled = true;
-
-  var thinking = addMsg('ai', '考え中…', 'thinking');
-
-  chatHistory.push({role:'user', content:msg});
-
-  try {
-    var res = await fetch('/.netlify/functions/chat', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({
-        messages: chatHistory,
-        systemPrompt: buildSystemPrompt()
-      })
-    });
-
-    var data = await res.json();
-
-    thinking.remove();
-
-    if(data.error){
-      addMsg('ai', '⚠️ エラー: ' + data.error);
-    } else {
-      addMsg('ai', data.content);
-      chatHistory.push({role:'assistant', content:data.content});
-      // 履歴は直近10往復まで保持
-      if(chatHistory.length > 20) chatHistory = chatHistory.slice(-20);
-    }
-  } catch(e) {
-    thinking.remove();
-    addMsg('ai', '⚠️ 通信エラー。Netlify Functionsの設定を確認してください。');
-  }
-
-  sendBtn.disabled = false;
-}
-
-function addMsg(role, text, cls){
-  var box = document.getElementById('chat-msgs');
-  var el = document.createElement('div');
-  el.className = 'chat-msg ' + role + (cls?' '+cls:'');
-  el.textContent = text;
-  box.appendChild(el);
-  box.scrollTop = box.scrollHeight;
-  return el;
-}
-
-function clearChat(){
-  chatHistory = [];
-  var box = document.getElementById('chat-msgs');
-  box.innerHTML = '<div class="chat-msg ai">チャット履歴をクリアしました。</div>';
-}
-
-// テキストエリア自動リサイズ
-document.addEventListener('DOMContentLoaded', function(){
-  var inp = document.getElementById('chat-input');
-  if(inp){
-    inp.addEventListener('input', function(){
-      this.style.height='auto';
-      this.style.height=Math.min(this.scrollHeight,100)+'px';
-    });
-  }
-});
-</script>
-
 </body>
-</html>
