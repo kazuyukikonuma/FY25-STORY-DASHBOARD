@@ -8,10 +8,10 @@
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;600;700&family=DM+Mono:wght@400;500;600&display=swap');
 :root{
-  --bg:#f5f6fa;--sur:#fff;--bor:#dde1ec;--borl:#eef0f7;
+  --bg:#fdf8f4;--sur:#fffef9;--bor:#e8ddd4;--borl:#f5ede6;
   --txt:#0f172a;--sub:#475569;--dim:#94a3b8;
-  --al:#7b9cc4;--ap:#c4a882;--am:#93d9f0;--at:#dc2626;
-  --alb:#edf3fb;--apb:#f7f0e6;--amb:#e4f6fd;--atb:#fef2f2;
+  --al:#7b9cc4;--ap:#c4a882;--am:#93d9f0;--at:#e07b6a;
+  --alb:#edf3fb;--apb:#f7f0e6;--amb:#e4f6fd;--atb:#fdf0ee;
   --web:#f4a5a5;--tel:#f5e19a;--kol:#f5afd4;--ec:#c4b0f0;--oth:#c8cdd6;
   --webb:#fdf2f2;--telb:#fefdf0;--kolb:#fdf1f8;--ecb:#f4f1fd;--othb:#f4f5f7;
 }
@@ -19,7 +19,7 @@
 body{font-family:'Noto Sans JP','Noto Sans TC',sans-serif;background:var(--bg);color:var(--txt);font-size:15px;}
 
 /* ===== Sticky Header ===== */
-.sticky-hd{position:sticky;top:0;z-index:100;background:var(--sur);border-bottom:2px solid var(--bor);padding:12px 28px;display:flex;align-items:center;justify-content:space-between;gap:16px;box-shadow:0 2px 8px rgba(0,0,0,.06);}
+.sticky-hd{position:sticky;top:0;z-index:100;background:#fffef9;border-bottom:2px solid var(--bor);padding:12px 28px;display:flex;align-items:center;justify-content:space-between;gap:16px;box-shadow:0 2px 8px rgba(0,0,0,.06);}
 .hd-left{display:flex;align-items:baseline;gap:14px;}
 .hd-title{font-size:1.1rem;font-weight:700;}
 .hd-total{font-size:1.5rem;font-weight:700;font-family:'DM Mono',monospace;color:var(--at);letter-spacing:-.03em;}
@@ -135,7 +135,9 @@ table.dt .tr.cm td{color:var(--am);background:var(--amb);}
 @keyframes sp{to{transform:rotate(360deg);}}
 .err{color:var(--at);text-align:center;padding:40px;}
 
-.chat-toggle{position:fixed;right:20px;bottom:24px;z-index:200;width:52px;height:52px;border-radius:50%;background:#1e3a5f;color:#fff;border:none;font-size:1.4rem;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.2);display:flex;align-items:center;justify-content:center;}
+.chat-toggle{position:fixed;right:16px;bottom:20px;z-index:200;width:72px;height:72px;border-radius:50%;background:transparent;border:none;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.15);padding:0;overflow:hidden;transition:transform .2s;}
+.chat-toggle:hover{transform:scale(1.08);}
+.chat-toggle img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
 .chat-panel{position:fixed;right:0;top:0;bottom:0;width:360px;background:var(--sur);border-left:2px solid var(--bor);z-index:150;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .3s ease;box-shadow:-4px 0 20px rgba(0,0,0,.08);}
 .chat-panel.open{transform:translateX(0);}
 .chat-hd{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:2px solid var(--bor);background:var(--bg);}
@@ -263,6 +265,15 @@ function setLang(l){
   document.querySelectorAll('.lbtn').forEach(function(b){
     b.classList.toggle('on',b.textContent.includes(l==='ja'?'日本語':'繁中'));
   });
+  // チャットUIのテキスト更新
+  var hdTxt = document.getElementById('chat-hd-txt');
+  if(hdTxt) hdTxt.textContent = l==='ja'?'AI 分析アシスタント':'AI 分析助理';
+  var inp = document.getElementById('chat-input');
+  if(inp) inp.placeholder = l==='ja'?'例：TELが8月に急増した理由は？':'例：TEL在8月為何急增？';
+  var sendBtn = document.getElementById('chat-send-btn');
+  if(sendBtn) sendBtn.textContent = l==='ja'?'送信':'傳送';
+  var clearBtn = document.getElementById('chat-clear-btn');
+  if(clearBtn) clearBtn.textContent = l==='ja'?'クリア':'清除';
   if(globalRows) render();
 }
 function setPeriod(p){
@@ -757,10 +768,10 @@ fetch('data.csv?t='+Date.now())
   .catch(function(err){ document.getElementById('app').innerHTML='<div class="err">⚠️ '+err.message+'</div>'; });
 </script>
 
-<button class="chat-toggle" id="chat-btn" title="AI分析アシスタント">💬</button>
+<button class="chat-toggle" id="chat-btn" title="AI分析アシスタント"><img src="AIC.jpg" alt="AI分析アシスタント"></button>
 <div class="chat-panel" id="chat-panel">
   <div class="chat-hd">
-    <div class="chat-hd-title"><span>AI 分析アシスタント</span><span class="chat-hd-badge">Claude</span></div>
+    <div class="chat-hd-title"><span id='chat-hd-txt'>AI 分析アシスタント</span><span class="chat-hd-badge">Claude</span></div>
     <div style="display:flex;gap:6px;align-items:center;">
       <button class="chat-clear" id="chat-clear-btn">クリア</button>
       <button class="chat-close" id="chat-close-btn">✕</button>
@@ -768,7 +779,7 @@ fetch('data.csv?t='+Date.now())
   </div>
   <div class="chat-ctx" id="chat-ctx">データ読み込み中…</div>
   <div class="chat-msgs" id="chat-msgs">
-    <div class="chat-msg ai">こんにちは！FY25の売上データについて何でも聞いてください。</div>
+    <div class="chat-msg ai" id='chat-init-msg'>こんにちは！FY25の売上データについて何でも聞いてください。</div>
   </div>
   <div class="chat-input-area">
     <textarea class="chat-input" id="chat-input" placeholder="例：TELが8月に急増した理由は？" rows="1"></textarea>
@@ -784,11 +795,13 @@ var _chatHistory = [];
 function _toggleChat(){
   _chatOpen = !_chatOpen;
   document.getElementById('chat-panel').classList.toggle('open', _chatOpen);
+  var chatBtn = document.getElementById('chat-btn');
+  if(chatBtn) chatBtn.style.display = _chatOpen ? 'none' : 'flex';
   if(_chatOpen){
     var ctx = document.getElementById('chat-ctx');
     if(ctx && globalRows){
       var pl = period==='y'?'年度':period==='m'?'月次':'季別';
-      ctx.textContent = '表示中：' + pl + ' | FY25（4月〜3月）| データ自動送信中';
+      ctx.textContent = (lang==='ja'?'表示中：':'顯示中：') + pl + ' | FY25（4月〜3月）| ' + (lang==='ja'?'データ自動送信中':'資料自動傳送中');
     }
   }
 }
