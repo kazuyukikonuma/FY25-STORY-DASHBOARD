@@ -802,7 +802,7 @@ function _buildPrompt(){
   CATS.forEach(function(c){ ct[c]=MONTHS.reduce(function(s,m){return s+(bc[c]?bc[c][m]||0:0);},0); grand+=ct[c]; });
   var gt = {};
   CH_GROUPS.forEach(function(g){ gt[g.key]=MONTHS.reduce(function(s,m){return s+(bg[g.key]?bg[g.key][m]||0:0);},0); });
-  var parts = ['あなたはベネッセ台湾支社FY25売上アナリストです。日本語で簡潔に答えてください。'];
+  var parts = ['あなたはベネッセ台湾支社FY25売上アナリストです。日本語で簡潔に答えてください。マークダウン記号（**、##、-など）は一切使わず必ずプレーンテキストのみで回答してください。'];
   parts.push('粒度:'+pl);
   parts.push('年間合計:'+(grand/10000).toFixed(1)+'万元');
   CATS.forEach(function(c){ parts.push((lang==='ja'?I18N.ja.catnames[c]:c)+':'+(ct[c]/10000).toFixed(1)+'万元('+(ct[c]/grand*100).toFixed(1)+'%)'); });
